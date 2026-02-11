@@ -1,9 +1,8 @@
 using MelmanApp;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -12,102 +11,64 @@ builder.Services.ConfigureHttpJsonOptions(options =>
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 });
 
+// Register AI Bot as Singleton (persists across requests)
+builder.Services.AddSingleton<AIGameBot>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
+void LogRequest(string endpoint)
+{
+    Console.WriteLine("[KW-BOT] Mega ogudor");
+}
 
 app.MapGet("/healthz", () =>
 {
+    LogRequest("/healthz");
     return new { status = "OK" };
 });
-app.MapPost("/combat", (GameRequest model) =>
+
+app.MapGet("/info", () =>
 {
-    var actions = new List<GameAction>();
-    var money = model.PlayerTower.Resources;
-
-    if(money >= 50 && model.PlayerTower.Level == 1)
+    LogRequest("/info");
+    return new
     {
-        actions.Add(new GameAction
-        {
-            Type = "upgrade"
-        });
-        money -= 50;
-    }
+        name = "Mega ogudor",
+        strategy = "AI-trapped-strategy",
+        version = "1.0"
+    };
+});
 
-    if (money >= 88 && model.PlayerTower.Level == 2)
-    {
-        actions.Add(new GameAction
-        {
-            Type = "upgrade"
-        });
+app.MapPost("/negotiate", (GameRequest model, AIGameBot bot) =>
+{
+    LogRequest("/negotiate");
+    var response = bot.Negotiate(model);
+    return Results.Ok(response);
+});
 
-        money -= 88;
-    }
-
-    if (money >= 153 && model.PlayerTower.Level == 3)
-    {
-        actions.Add(new GameAction
-        {
-            Type = "upgrade"
-        });
-
-        money -= 153;
-    }
-
-    if (money >= 268 && model.PlayerTower.Level == 4)
-    {
-        actions.Add(new GameAction
-        {
-            Type = "upgrade"
-        });
-
-        money -= 268;
-    }
-
-    if (money >= 469 && model.PlayerTower.Level == 5)
-    {
-        actions.Add(new GameAction
-        {
-            Type = "upgrade"
-        });
-
-        money -= 469;
-    }
-
-    if (money > 0 && model.Turn > 2)
-    {
-        actions.Add(new GameAction
-        {
-            Type = "armor",
-            Amount = money / 3
-        });
-    }
-
-    //var actions = new List<GameAction>
-    //{
-    //    new GameAction
-    //    {
-    //        Type = "armor",
-    //        Amount = 5
-    //    },
-    //    new GameAction
-    //    {
-    //        Type = "attack",
-    //        TargetId = 102,
-    //        TroopCount = 20
-    //    }
-    //};
-
+app.MapPost("/combat", (GameRequest model, AIGameBot bot) =>
+{
+    LogRequest("/combat");
+    var actions = bot.Combat(model);
     return Results.Ok(actions);
+});
+
+// Debug endpoint to view AI learning stats
+app.MapGet("/ai/stats", (AIGameBot bot) =>
+{
+    return Results.Ok(bot.GetStats());
+});
+
+// Debug endpoint to reset AI learning
+app.MapPost("/ai/reset", (AIGameBot bot) =>
+{
+    bot.Reset();
+    return Results.Ok(new { message = "AI brain reset successful" });
 });
 
 app.Run();

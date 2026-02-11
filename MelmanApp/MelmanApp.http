@@ -1,0 +1,6 @@
+@MelmanApp_HostAddress = http://localhost:5199
+
+GET {{MelmanApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
